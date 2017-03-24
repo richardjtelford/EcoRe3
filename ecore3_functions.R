@@ -4,6 +4,8 @@
 ## Calculate Bray Curtis Distance
 ###############################################
 
+# test edit
+
 calcBC <- function(site) {
 	
 	core <- site$core
