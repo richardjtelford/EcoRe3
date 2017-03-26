@@ -160,30 +160,45 @@ localOrd.plot <- function(localOrd.obj){
 # Calculate resistance, recovery, resilience with manual input of timings
 ###############################################
 	
-re3 <- function(localOrd.obj, bottom, end, site, method = c("BC", "PCA")){
+re3 <- function(localOrd.obj, bottom, end_, site, method = c("BC", "PCA")){
 	
 	PC <- localOrd.obj$PC
 	PC1 <- PC$PC1
-	start <- localOrd.obj$dist
+	#start <- localOrd.obj$dist
+	# This bit needed for matching up pollen and charcoal data
+	age <- site$ages
+	diffAge <- abs(age- localOrd.obj$dist)
+	start <- 	age[diffAge == min(diffAge)]	
 	
-	returnTime <- start - end
-	recoveryTime <- bottom - end
+	returnTime <- start - end_
+	recoveryTime <- bottom - end_
 
 	if(method == "BC"){
 		core <- site$core
 		age <- site$ages
 		ageResist <- match(c(start, bottom), age)
-		ageResil <- match(c(start, end), age)
+		ageResil <- match(c(start, end_), age)
+		ageRecov <- match(c(bottom, end_), age)
 		
 		resistance <- vegdist(sqrt(core[ageResist,]), method="bray")[1]
+		recovery <- vegdist(sqrt(core[ageRecov,]), method="bray")[1]
 		resilience <-  vegdist(sqrt(core[ageResil,]), method="bray")[1]
-	
+		r.resilience <-  resilience / resistance
+		 
 	} else if(method == "PCA") {
-		resistance <- PC1[PC$ages == start] - PC1[PC$ages == bottom]
-		resilience <- PC1[PC$ages == start] - PC1[PC$ages == end]
-	}
-		w.resilience <-  resilience / resistance
-	re3.obj <- data.frame(start = start, bottom = bottom, end = end, resistance = resistance, resilience = 1 - resilience, w.resilience = 1- w.resilience, return = returnTime, recovery = recoveryTime)
+		
+	  PreD <- abs((PC1[PC$ages == start] - PC1[PC$ages == bottom]))
+	  D <- 0
+	  PostD <-  abs(PC1[PC$ages == end] - PC1[PC$ages == bottom])
+	  resistance <-  D / PreD
+		recovery <- PostD / D
+		resilience <- PostD / PreD
+	  r.resilience <- ((PostD-D)/(PreD- D)) * (1 -(D/PreD))
+		}
+		
+	re3.obj <- data.frame(start = start, bottom = bottom, end = end, 
+	                      resistance = resistance, resilience = resilience, r.resilience = r.resilience, recovery = recovery, 
+	                      return = returnTime, recoveryTime = recoveryTime)
 	return(re3.obj)
 }
 
@@ -237,11 +252,11 @@ doClust <- function (site, hdg){
 
 plot.hdg <- function(hdg){
 	par(mfrow = c(3,2))
-	plot(hdg$resistance, hdg$recovery, xlab = "Change in state", ylab = "Recovery Time", bg = hdg$clust, pch = 21, type = "b")
-	plot(hdg$resistance, hdg$return, xlab = "Change in state", ylab = "Return Time", bg = hdg$clust, pch = 21, type = "b")
-	plot(hdg$resistance, hdg$w.resilience, xlab = "Change in state", ylab = "w.Resilience", bg = hdg$clust, pch = 21, type = "b")
-	plot(hdg$recovery, hdg$resilience, xlab = "Recovery", ylab = "Resilience", bg = hdg$clust, pch = 21, type = "b")
-	plot(hdg$recovery, hdg$w.resilience, xlab = "Recovery", ylab = "w.Resilience", bg = hdg$clust, pch = 21, type = "b")
+	plot(hdg$resistance, hdg$recoveryTime, xlab = "Change in state", ylab = "Recovery Time", bg = hdg$clust, pch = 21, type = "b", cex = 3)
+	plot(hdg$resistance, hdg$return, xlab = "Change in state", ylab = "Return Time", bg = hdg$clust, pch = 21, type = "b", cex = 3)
+	plot(hdg$resistance, hdg$r.resilience, xlab = "Change in state", ylab = "r.Resilience", bg = hdg$clust, pch = 21, type = "b", cex = 3)
+	plot(hdg$recoveryTime, hdg$resilience, xlab = "Recovery", ylab = "Resilience", bg = hdg$clust, pch = 21, type = "b", cex = 3)
+	plot(hdg$recoveryTime, hdg$r.resilience, xlab = "Recovery", ylab = "r.Resilience", bg = hdg$clust, pch = 21, type = "b", cex = 3)
 }
 
 
@@ -331,6 +346,78 @@ plotSimDat <- function(simDat){
 	points(x, y)
 	abline(v = c(simDat$brk), col = "red", lty = 2)
 	
+}
+
+
+##############################################
+# Char events
+##############################################
+
+charEvnts <- function(char, perc = 0.9){
+  require("plyr")
+  ages <- char$ages
+  macro <- char$macro
+  
+  
+  # find the 90th percentile for the charcoal data
+  hist(macro, breaks = length(macro)/10)
+  cutOff <- quantile(macro, c(perc))
+  events <- which(macro > cutOff)
+  
+  # Plot them
+  plot(ages, macro, type = "h")
+  points(ages[events], macro[events], pch = "x", col= "red", cex = 0.75)
+  
+  # find out which events are in consecutive samples
+  dEvents <- c(diff(events), 1000)
+  sglEvnts <- events[dEvents > 3]
+  points(ages[sglEvnts], macro[sglEvnts], pch = 20, col= "blue")
+  points(ages[sglEvnts], macro[sglEvnts], pch = 1)
+  
+  #sglEvents gives you the start time the of the events
+  
+  #Get the duration of the event	
+  nEvents <- rep(1, length(events))
+  N <- 1
+  for(i in 1:(length(dEvents) - 1)){
+    if(dEvents[i] < 3) {
+      nEvents[i+1] <- N
+    } else{
+      N <- N + 1
+      nEvents[i+1] <- N
+    }
+  }
+  points(ages[events], macro[events], pch = 20, col= (nEvents+1), cex = 0.75)
+  
+  # Then make an event table
+  evnt.df <- data.frame(	sample = events,
+                         age = ages[events],
+                         peak = macro[events],
+                         peakZ = scale(macro)[events],
+                         nEvnt = as.factor(nEvents)
+  )
+  
+  #get the maximum value and other values for an event. Creates your "disturbance table"
+  
+  dist.df <- ddply(evnt.df, .(nEvnt), summarize, maxMag = max(peakZ), meanMag = mean(peakZ), start = max(age), end = min(age), duration = max(age)- min(age), startSmp = max(sample))
+  
+  charEvntObj <- list(dist = dist.df, evnt = evnt.df)
+  return(charEvntObj)
+}
+
+################################################
+# function to make the standard charcoal plot
+################################################
+
+makeCharPlot <- function(char, dist.df, xLim= NULL){
+  
+  plot(char$age, char$macro, type = "h", xlim = xLim)
+  for(i in 1:nrow(dist.df)){	
+    st <- dist.df$start[i]
+    end <- dist.df$end[i] 
+    polygon(x = c(st, end, end, st), y = c(0,0, 5,5), density = NA, col = rgb(0,0,255, max = 255, alpha = 50))
+    abline(v = dist.df$start[i], lty = 3)	
+  }
 }
 
 
