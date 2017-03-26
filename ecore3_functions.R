@@ -360,10 +360,10 @@ charEvnts <- function(char, perc = 0.9){
   
   
   # find the 90th percentile for the charcoal data
-  hist(macro, breaks = length(macro)/10)
+  hist(macro, col = "darkgrey", breaks = length(macro)/10)
   cutOff <- quantile(macro, c(perc))
-  events <- which(macro > cutOff)
-  
+  events <- which(macro > cutOff) 
+  abline(v = cutOff, col = "blue", lwd = 2, lty = 2)
   # Plot them
   plot(ages, macro, type = "h")
   points(ages[events], macro[events], pch = "x", col= "red", cex = 0.75)
@@ -371,8 +371,8 @@ charEvnts <- function(char, perc = 0.9){
   # find out which events are in consecutive samples
   dEvents <- c(diff(events), 1000)
   sglEvnts <- events[dEvents > 3]
-  points(ages[sglEvnts], macro[sglEvnts], pch = 20, col= "blue")
-  points(ages[sglEvnts], macro[sglEvnts], pch = 1)
+  points(ages[sglEvnts], macro[sglEvnts], pch = 20, col= "blue", cex = 3)
+  points(ages[sglEvnts], macro[sglEvnts], pch = 1, cex = 3)
   
   #sglEvents gives you the start time the of the events
   
