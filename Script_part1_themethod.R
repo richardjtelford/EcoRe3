@@ -12,11 +12,11 @@ library("analogue")
 
 # Sort the directory
 
-mainDir <- "~/EcoRe3"
+#mainDir <- "~/EcoRe3"
 # subDir <- "ForRes"
 # dir.create(file.path(mainDir, subDir), showWarnings = FALSE)
 # setwd(file.path(mainDir, subDir))
-setwd(mainDir)
+#setwd(mainDir)
 source("ecore3_functions.R")
 
 
@@ -26,7 +26,7 @@ source("ecore3_functions.R")
 
 dataFile <- "TAS1110_POLLEN_NEW.csv"
 dataDir <- "data"
-fileToLoad <- file.path(mainDir, dataDir, dataFile)
+fileToLoad <- file.path(dataDir, dataFile)
 
 poll <- read.csv2(fileToLoad, header = TRUE)
 head(poll)
