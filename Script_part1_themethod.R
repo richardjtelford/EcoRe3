@@ -3,11 +3,7 @@
 # METHOD 1 SCRIPT FOR RUNNING ON A SINGLE SITE 
 ###############################################
 
-
-install.packages("rioja")
-install.packages("vegan")
-install.packages("plyr")
-install.packages("analogue")
+#run installPackages.R script first
 
 library("vegan")
 library("rioja")
